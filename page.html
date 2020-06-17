@@ -45,43 +45,6 @@
         margin-right: 5px;
     }
 </style>
-<script>
-    function addTask(){
-        var list = document.getElementById("task-list");
-        var input = document.getElementById("task");
-        var item = document.createElement("div");
-        var text = document.createElement("div");
-        var button = document.createElement("button");
-
-        text.className = "list-text";
-        text.innerText = input.value;
-
-        button.innerText = "X";
-        button.className = "remove-button";
-        button.onclick = function() {
-            button.parentElement.remove();
-        }
-
-        item.className = "item-container";
-        item.onclick = function() {
-            if (text.getAttribute("complete") == undefined) {
-                text.setAttribute("complete", "true");
-            } else {
-                text.removeAttribute("complete");
-            }
-        }
-
-        item.appendChild(text);
-        item.appendChild(button);
-        input.value = "";
-        list.appendChild(item);
-        input.focus();
-    }
-
-    function checkAdd(event) {
-        if (event.keyCode == 13) addTask();
-    }
-</script>
 </head>
 <body>
     <div id="content-div">
@@ -96,4 +59,184 @@
         <ul id="task-list"></ul>
     </div>
 </body>
+<script>
+    let currList;
+
+    function addExistingTask(todo) {
+        let list = document.getElementById("task-list");
+        let item = document.createElement("div");
+        let text = document.createElement("div");
+        let button = document.createElement("button");
+
+        text.className = "list-text";
+        text.innerText = todo.name;
+        if (todo.complete) {
+            text.setAttribute("complete", "true");
+        }
+
+        button.innerText = "X";
+        button.className = "remove-button";
+        button.onclick = function(event) {
+            event.stopPropagation();
+            
+            button.parentElement.remove();
+            fetch('http://localhost:8888/todoList/remove', {
+                'method': 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json;charset=utf-8'
+                },
+                body: JSON.stringify(todo)
+            })
+            .catch(err => {
+                console.log(err);
+            });
+        }
+
+        item.className = "item-container";
+        item.onclick = function() {
+            if (text.getAttribute("complete") == undefined) {
+                text.setAttribute("complete", "true");
+                todo.complete = true;
+            } else {
+                text.removeAttribute("complete");
+                todo.complete = false;
+            }
+
+            fetch('http://localhost:8888/todoList/update', {
+                'method': 'PUT',
+                headers: {
+                    'Content-Type': 'application/json;charset=utf-8'
+                },
+                body: JSON.stringify(todo)
+            })
+            .catch(err => {
+                console.log(err);
+            });
+        }
+
+        item.appendChild(text);
+        item.appendChild(button);
+        list.appendChild(item);
+    }
+
+    function addTask() {
+        let list = document.getElementById("task-list");
+        let input = document.getElementById("task");
+        let item = document.createElement("div");
+        let text = document.createElement("div");
+        let button = document.createElement("button");
+        
+        if (input.value.trim() == "") {
+            input.value = "";
+            input.focus();
+            alert("Input cannot be empty");
+
+            return;
+        }
+
+        for (todo of currList) {
+            if (todo.name == input.value.trim()) {
+                input.value = "";
+                input.focus();
+                alert("Cannot input a duplicate entry");
+
+                return;
+            }
+        }
+
+        fetch('http://localhost:8888/todoList/insert', {
+            'method': 'PUT',
+            headers: {
+                'Content-Type': 'application/json;charset=utf-8'
+            },
+            body: JSON.stringify({name: input.value.trim()})
+        })
+        .then(res => {
+            if (res.status == 200) {
+                let newTodo = {
+                    name: input.value.trim(),
+                    complete: false
+                };
+                currList.push(newTodo);
+
+                text.className = "list-text";
+                text.innerText = input.value.trim();
+
+                button.innerText = "X";
+                button.className = "remove-button";
+                button.onclick = function(event) {
+                    event.stopPropagation();
+
+                    button.parentElement.remove();
+                    fetch('http://localhost:8888/todoList/remove', {
+                        'method': 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json;charset=utf-8'
+                        },
+                        body: JSON.stringify(newTodo)
+                    })
+                    .catch(err => {
+                        console.log(err);
+                    });
+                }
+
+                item.className = "item-container";
+                item.onclick = function() {
+                    if (text.getAttribute("complete") == undefined) {
+                        text.setAttribute("complete", "true");
+                        newTodo.complete = true;
+                    } else {
+                        text.removeAttribute("complete");
+                        newTodo.complete = false;
+                    }
+
+                    fetch('http://localhost:8888/todoList/update', {
+                        'method': 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json;charset=utf-8'
+                        },
+                        body: JSON.stringify(newTodo)
+                    })
+                    .catch(err => {
+                        console.log(err);
+                    });
+                }
+
+                item.appendChild(text);
+                item.appendChild(button);
+                input.value = "";
+                list.appendChild(item);
+                input.focus();
+            } else {
+                input.value = "";
+                input.focus();
+                alert("Cannot input a duplicate entry");
+            }
+        })
+        .catch(err => {
+            input.value = "";
+            input.focus();
+        });
+    }
+
+    function checkAdd(event) {
+        if (event.keyCode == 13) addTask();
+    }
+
+    function getAllTasks() {
+        fetch("http://localhost:8888/todoList/getList")
+        .then(res => res.json())
+        .then(arr => {
+            currList = arr;
+            for (todo of currList) {
+                addExistingTask(todo);
+            }
+        })
+        .catch(err => {
+            console.log(err);
+        });
+    }
+
+    getAllTasks();
+</script>
 </html>
