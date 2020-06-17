@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+<head>
+<title>To Do List</title>
+<meta name="description" content="TCS intro To Do List">
+<meta name="keywords" content="html To Do List">
+<style>
+    #title-div {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+
+    #input-div {
+        display: flex;
+        flex-direction: row;
+        width: 10%;
+        margin: 0 auto;
+    }
+
+    #task-list {
+        width: 15%;
+        margin: 0 auto;
+    }
+
+    .item-container {
+        display: flex;
+        margin-bottom: 5px;
+    }
+
+    .list-text {
+        width: 250px;
+        max-width: 250px;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+
+    .list-text[complete]{
+        text-decoration: line-through;
+    }
+
+    .remove-button{
+        margin-left: 5px;
+        margin-right: 5px;
+    }
+</style>
+<script>
+    function addTask(){
+        var list = document.getElementById("task-list");
+        var input = document.getElementById("task");
+        var item = document.createElement("div");
+        var text = document.createElement("div");
+        var button = document.createElement("button");
+
+        text.className = "list-text";
+        text.innerText = input.value;
+
+        button.innerText = "X";
+        button.className = "remove-button";
+        button.onclick = function() {
+            button.parentElement.remove();
+        }
+
+        item.className = "item-container";
+        item.onclick = function() {
+            if (text.getAttribute("complete") == undefined) {
+                text.setAttribute("complete", "true");
+            } else {
+                text.removeAttribute("complete");
+            }
+        }
+
+        item.appendChild(text);
+        item.appendChild(button);
+        input.value = "";
+        list.appendChild(item);
+        input.focus();
+    }
+
+    function checkAdd(event) {
+        if (event.keyCode == 13) addTask();
+    }
+</script>
+</head>
+<body>
+    <div id="content-div">
+        <div id="title-div">
+            <h1>A really cool list that looks amazing</h1>
+            <h2>Click an item to cross it off.<br>Click X to clear the item entirely</h2>
+            <div id="input-div">
+                <input onkeypress="checkAdd(event)" id="task"/>
+                <button id="create-task" onclick="addTask()">Add</button>
+            </div>
+        </div>
+        <ul id="task-list"></ul>
+    </div>
+</body>
+</html>
