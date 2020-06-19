@@ -87,7 +87,7 @@
             <h2>Click an item to cross it off.<br>Click X to clear the item entirely</h2>
             <div id="input-div">
                 <input onkeypress="checkAdd(event)" id="task"/>
-                <input id ="pers"/>
+                <!--<input id ="pers"/>-->
                 <button id="create-task" onclick="addTask()">Add</button>
             </div>
         </div>
@@ -262,7 +262,7 @@
     function addTask() {
         let list = document.getElementById("task-list");
         let input = document.getElementById("task");
-        let person = document.getElementById("pers");
+        //let person = document.getElementById("pers");
         let item = document.createElement("div");
         let text = document.createElement("div");
         let dropdown = document.createElement("select");
@@ -391,7 +391,7 @@
                 }
 
                 item.appendChild(text);
-                item.appendChild(person);
+                //item.appendChild(person);
                 item.appendChild(dropdown);
                 item.appendChild(button);
                 input.value = "";
