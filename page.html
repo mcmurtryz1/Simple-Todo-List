@@ -36,23 +36,58 @@
         word-break: break-all;
     }
 
-    .list-text[complete]{
+    .pers {
+        width: 100px;
+        max-width: 100px;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+
+    .list-text[complete] {
         text-decoration: line-through;
     }
 
-    .remove-button{
+    .remove-button {
         margin-left: 5px;
         margin-right: 5px;
+    }
+
+    #login {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .login-field {
+        margin-bottom: 5px;
+    }
+
+    #swap-label {
+        cursor:pointer;
+        color:blue;
+        text-decoration:underline;
+        margin-top: 5px;
+    }
+
+    #swap-label:hover {
+        text-decoration:none;
     }
 </style>
 </head>
 <body>
-    <div id="content-div">
+    <div id="login">
+        <div class="login-field">Username: <input id="user-field"/></div>
+        <div class="login-field">Password: <input id="password-field"/></div>
+        <button style="width: 100px;" id="login-button" onclick="signin()">Sign in</button>
+        <label id="swap-label" onclick="swapButton()">Sign up now</label>
+    </div>
+
+    <div style="display: none;" id="content-div">
         <div id="title-div">
             <h1>A really cool list that looks amazing</h1>
             <h2>Click an item to cross it off.<br>Click X to clear the item entirely</h2>
             <div id="input-div">
                 <input onkeypress="checkAdd(event)" id="task"/>
+                <input id ="pers"/>
                 <button id="create-task" onclick="addTask()">Add</button>
             </div>
         </div>
@@ -61,11 +96,88 @@
 </body>
 <script>
     let currList;
+    let jwt;
+    let isSignin = true;
+
+    function signin() {
+        let username = document.getElementById("user-field").value;
+        let password = document.getElementById("password-field").value;
+        document.getElementById("user-field").value = "";
+        document.getElementById("password-field").value = "";
+
+        fetch('http://localhost:8888/user/signin', {
+            'method': 'POST',
+            headers: {
+                'Content-Type': 'application/json;charset=utf-8',
+                'x-access-token': jwt
+            },
+            body: JSON.stringify({username: username, password: password})
+        })
+        .then(res => {
+            let statusCode = res.status;
+            res.json()
+            .then(response => {
+                if (statusCode != 200) {
+                    alert(response.message);
+                } else {
+                    jwt = response.token;
+                    document.getElementById("login").style.display = "none";
+                    document.getElementById("content-div").style.display = "";
+                    getAllTasks();
+                }
+            })
+        })
+        .catch(err => {
+            console.log(err);
+        });
+    }
+
+    function signup() {
+        let username = document.getElementById("user-field").value;
+        let password = document.getElementById("password-field").value;
+        document.getElementById("user-field").value = "";
+        document.getElementById("password-field").value = "";
+
+        fetch('http://localhost:8888/user/signup', {
+            'method': 'POST',
+            headers: {
+                'Content-Type': 'application/json;charset=utf-8',
+            },
+            body: JSON.stringify({username: username, password: password})
+        })
+        .then(res => {
+            if (res.status == 400) {
+                alert("Username taken");
+            } else if (res.status == 500) {
+                alert("Try again later");
+            } else {
+                swapButton();
+            }
+        })
+        .catch(err => {
+            console.log(err);
+        });
+    }
+
+    function swapButton() {
+        if (isSignin) {
+            document.getElementById("login-button").innerText = "Sign up";
+            document.getElementById("login-button").onclick = signup;
+            document.getElementById("swap-label").innerText = "Sign in now";
+        } else {
+            document.getElementById("login-button").innerText = "Sign in";
+            document.getElementById("login-button").onclick = signin;
+            document.getElementById("swap-label").innerText = "Sign up now";
+        }
+
+        isSignin = !isSignin;
+    }
 
     function addExistingTask(todo) {
         let list = document.getElementById("task-list");
         let item = document.createElement("div");
         let text = document.createElement("div");
+        let dropdown = document.createElement("select");
         let button = document.createElement("button");
 
         text.className = "list-text";
@@ -73,27 +185,7 @@
         if (todo.complete) {
             text.setAttribute("complete", "true");
         }
-
-        button.innerText = "X";
-        button.className = "remove-button";
-        button.onclick = function(event) {
-            event.stopPropagation();
-            
-            button.parentElement.remove();
-            fetch('http://localhost:8888/todoList/remove', {
-                'method': 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json;charset=utf-8'
-                },
-                body: JSON.stringify(todo)
-            })
-            .catch(err => {
-                console.log(err);
-            });
-        }
-
-        item.className = "item-container";
-        item.onclick = function() {
+        text.onclick = function() {
             if (text.getAttribute("complete") == undefined) {
                 text.setAttribute("complete", "true");
                 todo.complete = true;
@@ -105,16 +197,64 @@
             fetch('http://localhost:8888/todoList/update', {
                 'method': 'PUT',
                 headers: {
-                    'Content-Type': 'application/json;charset=utf-8'
+                    'Content-Type': 'application/json;charset=utf-8',
+                    'x-access-token': jwt
                 },
                 body: JSON.stringify(todo)
             })
             .catch(err => {
                 console.log(err);
             });
+        };
+
+        dropdown.className = "priority-dropdown";
+        for (let x = 0; x <= 3; x++) {
+            let option = document.createElement("option");
+            option.setAttribute("value", x != 0 ? x : "");
+            option.innerText = x != 0 ? x : "None"
+            dropdown.appendChild(option);
         }
+        if (todo.priority != undefined) {
+            dropdown.selectedIndex = todo.priority;
+        }
+        dropdown.onchange = function() {
+            todo.priority = dropdown.selectedIndex;
+            fetch('http://localhost:8888/todoList/update', {
+                'method': 'PUT',
+                headers: {
+                    'Content-Type': 'application/json;charset=utf-8',
+                    'x-access-token': jwt
+                },
+                body: JSON.stringify(todo)
+            })
+            .catch(err => {
+                console.log(err);
+            });
+        };
+
+        button.innerText = "X";
+        button.className = "remove-button";
+        button.onclick = function(event) {
+            event.stopPropagation();
+            
+            button.parentElement.remove();
+            fetch('http://localhost:8888/todoList/remove', {
+                'method': 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json;charset=utf-8',
+                    'x-access-token': jwt
+                },
+                body: JSON.stringify(todo)
+            })
+            .catch(err => {
+                console.log(err);
+            });
+        };
+
+        item.className = "item-container";
 
         item.appendChild(text);
+        item.appendChild(dropdown);
         item.appendChild(button);
         list.appendChild(item);
     }
@@ -122,8 +262,10 @@
     function addTask() {
         let list = document.getElementById("task-list");
         let input = document.getElementById("task");
+        let person = document.getElementById("pers");
         let item = document.createElement("div");
         let text = document.createElement("div");
+        let dropdown = document.createElement("select");
         let button = document.createElement("button");
         
         if (input.value.trim() == "") {
@@ -147,7 +289,8 @@
         fetch('http://localhost:8888/todoList/insert', {
             'method': 'PUT',
             headers: {
-                'Content-Type': 'application/json;charset=utf-8'
+                'Content-Type': 'application/json;charset=utf-8',
+                'x-access-token': jwt
             },
             body: JSON.stringify({name: input.value.trim()})
         })
@@ -161,6 +304,49 @@
 
                 text.className = "list-text";
                 text.innerText = input.value.trim();
+                text.onclick = function() {
+                    if (text.getAttribute("complete") == undefined) {
+                        text.setAttribute("complete", "true");
+                        newTodo.complete = true;
+                    } else {
+                        text.removeAttribute("complete");
+                        newTodo.complete = false;
+                    }
+
+                    fetch('http://localhost:8888/todoList/update', {
+                        'method': 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json;charset=utf-8',
+                            'x-access-token': jwt
+                        },
+                        body: JSON.stringify(newTodo)
+                    })
+                    .catch(err => {
+                        console.log(err);
+                    });
+                }
+
+                dropdown.className = "priority-dropdown";
+                for (let x = 0; x <= 3; x++) {
+                    let option = document.createElement("option");
+                    option.setAttribute("value", x != 0 ? x : "");
+                    option.innerText = x != 0 ? x : "None"
+                    dropdown.appendChild(option);
+                }
+                dropdown.onchange = () => {
+                    newTodo.priority = dropdown.selectedIndex;
+                    fetch('http://localhost:8888/todoList/update', {
+                        'method': 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json;charset=utf-8',
+                            'x-access-token': jwt
+                        },
+                        body: JSON.stringify(newTodo)
+                    })
+                    .catch(err => {
+                        console.log(err);
+                    });
+                }
 
                 button.innerText = "X";
                 button.className = "remove-button";
@@ -171,7 +357,8 @@
                     fetch('http://localhost:8888/todoList/remove', {
                         'method': 'DELETE',
                         headers: {
-                            'Content-Type': 'application/json;charset=utf-8'
+                            'Content-Type': 'application/json;charset=utf-8',
+                            'x-access-token': jwt
                         },
                         body: JSON.stringify(newTodo)
                     })
@@ -193,7 +380,8 @@
                     fetch('http://localhost:8888/todoList/update', {
                         'method': 'PUT',
                         headers: {
-                            'Content-Type': 'application/json;charset=utf-8'
+                            'Content-Type': 'application/json;charset=utf-8',
+                            'x-access-token': jwt
                         },
                         body: JSON.stringify(newTodo)
                     })
@@ -203,6 +391,8 @@
                 }
 
                 item.appendChild(text);
+                item.appendChild(person);
+                item.appendChild(dropdown);
                 item.appendChild(button);
                 input.value = "";
                 list.appendChild(item);
@@ -224,7 +414,11 @@
     }
 
     function getAllTasks() {
-        fetch("http://localhost:8888/todoList/getList")
+        fetch("http://localhost:8888/todoList/getList", {
+            headers: {
+                'x-access-token': jwt
+            }
+        })
         .then(res => res.json())
         .then(arr => {
             currList = arr;
@@ -236,7 +430,5 @@
             console.log(err);
         });
     }
-
-    getAllTasks();
 </script>
 </html>
